@@ -9,22 +9,29 @@ local DEFAULT_SETTINGS = {
         formatters = {},
         linters = {},
     },
+    async = true,
 }
 
 M.setup = function(opts)
-    local util = require 'util.bridge'
-    -- Load associations asynchronously
-    util.load_associations_async(function(associations)
+    -- Merge the default settings with the user provided settings
+    opts = opts or {}
+    opts = vim.tbl_deep_extend('force', DEFAULT_SETTINGS, opts)
+
+    local cache_callback = function(associations)
         -- Cache the loaded associations
         cached_associations = associations
-        -- Merge the default settings with the user provided settings
-        opts = opts or {}
-        opts = vim.tbl_deep_extend('force', DEFAULT_SETTINGS, opts)
         -- Apply overrides
         cached_associations.formatters =
             vim.tbl_deep_extend('force', cached_associations.formatters, opts.overrides.formatters)
         cached_associations.linters = vim.tbl_deep_extend('force', cached_associations.linters, opts.overrides.linters)
-    end)
+    end
+
+    local util = require 'util.bridge'
+    if opts.async then
+        util.load_associations_async(cache_callback)
+    else
+        util.load_associations_sync(cache_callback)
+    end
 end
 
 M.get_formatters = function()

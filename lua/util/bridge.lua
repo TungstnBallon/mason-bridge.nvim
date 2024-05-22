@@ -21,28 +21,33 @@ local function update_associations(associations, category, languages, name)
     end
 end
 
+local function load_associations_sync(callback)
+    local registry = require 'mason-registry'
+    local packages = registry.get_installed_packages()
+    local associations = { formatters = {}, linters = {} }
+
+    for _, package in ipairs(packages) do
+        local spec = package.spec
+        local languages = spec.languages
+
+        local categories = utils_Set(spec.categories)
+        if categories['Formatter'] then
+            update_associations(associations, 'formatters', languages, spec.name)
+        elseif categories['Linter'] then
+            update_associations(associations, 'linters', languages, spec.name)
+        end
+    end
+
+    callback(associations)
+end
+
 local function load_associations_async(callback)
     vim.schedule(function()
-        local registry = require 'mason-registry'
-        local packages = registry.get_installed_packages()
-        local associations = { formatters = {}, linters = {} }
-
-        for _, package in ipairs(packages) do
-            local spec = package.spec
-            local languages = spec.languages
-
-            local categories = utils_Set(spec.categories)
-            if categories['Formatter'] then
-                update_associations(associations, 'formatters', languages, spec.name)
-            elseif categories['Linter'] then
-                update_associations(associations, 'linters', languages, spec.name)
-            end
-        end
-
-        callback(associations)
+        load_associations_sync(callback)
     end)
 end
 
 return {
     load_associations_async = load_associations_async,
+    load_associations_sync = load_associations_sync,
 }
